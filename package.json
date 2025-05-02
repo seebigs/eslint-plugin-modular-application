@@ -4,7 +4,9 @@
   "description": "ESLint plugin to enforce module boundaries",
   "author": "Chris Bigelow",
   "license": "MIT",
-  "repository": "https://github.com/seebigs/eslint-plugin-modular-application",
+  "repository": {
+    "url": "git+https://github.com/seebigs/eslint-plugin-module-boundaries.git"
+  },
   "keywords": [
     "eslint",
     "modular",
