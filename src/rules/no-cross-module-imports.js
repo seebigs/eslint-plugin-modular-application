@@ -33,8 +33,8 @@ module.exports = {
 			}
 		],
 		messages: {
-			crossModuleImport: 'Import from "{{importPath}}" crosses module boundary. Module directories: {{moduleDirs}}',
-			outsideModuleImport: 'Import from "{{importPath}}" is outside of any defined module directory. Module directories: {{moduleDirs}}'
+			crossModuleImport: 'Import from "{{importPath}}" crosses module boundary. Module directories: [{{moduleDirs}}]',
+			outsideModuleImport: 'Import from "{{importPath}}" is outside of the defined module directory. Module directories: [{{moduleDirs}}]'
 		}
 	},
 	create: function (context) {
