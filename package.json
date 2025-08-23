@@ -1,6 +1,6 @@
 {
   "name": "eslint-plugin-module-boundaries",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "ESLint plugin to enforce module boundaries",
   "author": "Chris Bigelow",
   "license": "MIT",
