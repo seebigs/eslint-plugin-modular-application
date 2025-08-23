@@ -16,6 +16,7 @@ function resolvePath(relativePath) {
 
 ruleTester.run('module-boundaries/no-cross-module-imports', rule, {
     valid: [
+        // Relative imports
         {
             code: "import { something } from './local-file';",
             filename: resolvePath('src/modules/user/components/UserProfile.js'),
@@ -67,6 +68,8 @@ ruleTester.run('module-boundaries/no-cross-module-imports', rule, {
                 moduleDirectories: ['src/modules/user'],
             }],
         },
+
+        // Aliased imports
         {
             code: "import { Button } from '@components/Button';",
             filename: resolvePath('src/modules/user/components/UserProfile.js'),
@@ -107,6 +110,8 @@ ruleTester.run('module-boundaries/no-cross-module-imports', rule, {
                 },
             }],
         },
+
+        // Async/Dynamic imports
         {
             code: "async function loadButton() { const Button = await import('./Button'); }",
             filename: resolvePath('src/modules/user/components/UserProfile.js'),
@@ -129,6 +134,20 @@ ruleTester.run('module-boundaries/no-cross-module-imports', rule, {
                 aliases: {
                     '@components': 'src/modules/user/components',
                 },
+            }],
+        },
+
+        // Allow paths for specific modules
+        {
+            code: "import { something } from '../../other/Component';",
+            filename: resolvePath('src/modules/user/components/UserProfile.js'),
+            options: [{
+                moduleDirectories: [
+                    {
+                        path: 'src/modules/user',
+                        allow: ['src/modules/other'],
+                    },
+                ],
             }],
         },
     ],

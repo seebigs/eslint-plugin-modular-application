@@ -57,7 +57,7 @@ This rule prevents imports from outside the current module directory. It automat
 // Module: src/modules/user
 
 import { login } from '../../auth/views/Login';  // Invalid
-import { utils } from '@/utils';  // Invalid (resolves to lib/utils)
+import { utils } from '@/utils';  // Invalid (alias resolves to lib/utils)
 
 async function loadLogin() {
   const Player = await import('../../common/VideoPlayer');  // Invalid
@@ -76,17 +76,17 @@ const component = require('../../auth/views/Login');  // Invalid
 import { something } from './local-file';
 import { helper } from '../utils/helper';
 
-/* External dependencies (allowed) */
+/* External package dependencies (allowed) */
 import lodash from 'lodash';
 
 /* Aliased imports within the same module (allowed) */
 import { Button } from '@components/Button';
-  // resolves to src/modules/user/components/Button
+  // alias resolves to src/modules/user/components/Button
 
-/* Dynamic imports within same module (allowed) */
+/* Dynamic imports within the same module (allowed) */
 async function loadButton() {
   const Button = await import('@components/Button');
-  // resolves to src/modules/user/components/Button
+  // alias resolves to src/modules/user/components/Button
 }
 ```
 
@@ -95,7 +95,10 @@ async function loadButton() {
 The rule accepts an object with the following properties:
 
 - `moduleDirectories` (required): An array of directory paths that represent modules. These paths should be relative to your project root. Files within these directories should only be allowed to import from within their own module directory.
+  - `allow` Directory paths should most commonly be a string, which locks down all imports from anywhere outside of this directory. However, if you need to allow some exceptions you can instead pass and object containing an "allow" property. `allow` should be an array of directory paths from which this module is explicitly ALLOWED to import.
+    - Example: ```{ "path": "src/modules/user", "allow":["lib/constants"] }```
 - `aliases` (optional): An object mapping import aliases to their actual paths. This is useful for projects using TypeScript or Babel with path aliases configured. Any prefix can be used for aliases (e.g., `@`, `#`, `~`, etc.). The resolved paths must still respect module boundaries.
+  - Note: If you do not configure aliases here, any imports that start with special characters like `@` will be treated as namespaced external package imports and will pass validation.
 
 Example configuration:
 
@@ -106,7 +109,13 @@ Example configuration:
             "moduleDirectories": [
                 "src/modules/user",
                 "src/modules/auth",
-                "src/modules/payment"
+                {
+                    "path": "src/modules/payment",
+                    "allow": {
+                        "path": "src/modules/user",
+                        "allow":["lib/constants"],
+                    },
+                },
             ],
             "aliases": {
                 "@components": "src/modules/user/components",

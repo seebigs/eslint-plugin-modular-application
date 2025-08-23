@@ -17,7 +17,27 @@ module.exports = {
 					moduleDirectories: {
 						type: 'array',
 						items: {
-							type: 'string'
+							anyOf: [
+								{
+									type: 'string'
+								},
+								{
+									type: 'object',
+									properties: {
+										path: {
+											type: 'string',
+										},
+										allow: {
+											type: 'array',
+											items: {
+												type: 'string',
+											},
+										},
+									},
+									required: ['path'],
+									additionalProperties: false,
+								}
+							],
 						},
 						description: 'List of directory paths that represent modules'
 					},
@@ -42,23 +62,28 @@ module.exports = {
 		const moduleDirectories = options.moduleDirectories || [];
 		const aliases = options.aliases || {};
 		const currentFilePath = context.getFilename();
-		
+
 		// Convert relative paths to absolute for consistent comparison
 		const workingDir = process.cwd();
-		const absoluteModuleDirs = moduleDirectories.map(dir => path.resolve(workingDir, dir));
+		const absoluteModuleDirs = moduleDirectories.map((dir) => {
+			if (typeof dir === 'string') {
+				return path.resolve(workingDir, dir);
+			}
+			return path.resolve(workingDir, dir.path);
+		});
 		const absoluteCurrentFile = path.resolve(workingDir, currentFilePath);
 		const currentDir = path.dirname(absoluteCurrentFile);
 
 		/**
-		 * Checks if a file path is within a module directory
+		 * Checks if a file path is within a directory
 		 * @param {string} filePath - The absolute path to check
-		 * @param {string} moduleDir - The absolute path of the module directory
-		 * @returns {boolean} - True if the file is within the module directory
+		 * @param {string} dirPath - The absolute path of the directory
+		 * @returns {boolean} - True if the file is within the directory
 		 */
-		function isWithinModuleDir(filePath, moduleDir) {
+		function isWithinDir(filePath, dirPath) {
 			const normalizedPath = path.normalize(filePath);
-			const normalizedModuleDir = path.normalize(moduleDir);
-			return normalizedPath.startsWith(normalizedModuleDir);
+			const normalizedDirPath = path.normalize(dirPath);
+			return normalizedPath.startsWith(normalizedDirPath);
 		}
 
 		/**
@@ -67,7 +92,35 @@ module.exports = {
 		 * @returns {string|undefined} - The absolute path of the module directory, or undefined if not found
 		 */
 		function findModuleDir(filePath) {
-			return absoluteModuleDirs.find(dir => isWithinModuleDir(filePath, dir));
+			return absoluteModuleDirs.find(dir => isWithinDir(filePath, dir));
+		}
+
+		/**
+		 * Finds which module directory configuration a file belongs to
+		 * @param {string} filePath - The absolute path of the file
+		 * @returns {Object|undefined} - The module directory configuration, or undefined if not found
+		 */
+		function findModuleDirConfig(filePath) {
+			const index = absoluteModuleDirs.findIndex(dir => isWithinDir(filePath, dir));
+			return index !== -1 ? moduleDirectories[index] : undefined;
+		}
+
+		/**
+		 * Checks if an import path should be ignored based on the current module's allow list
+		 * @param {string} resolvedPath - The absolute path of the import
+		 * @param {Object} currentModuleConfig - The current module configuration
+		 * @returns {boolean} - True if the import should be ignored
+		 */
+		function shouldIgnoreImport(resolvedPath, currentModuleConfig) {
+			if (typeof currentModuleConfig === 'string' || !currentModuleConfig.allow) {
+				return false;
+			}
+
+			const workingDir = process.cwd();
+			return currentModuleConfig.allow.some(allowPath => {
+				const absoluteAllowPath = path.resolve(workingDir, allowPath);
+				return isWithinDir(resolvedPath, absoluteAllowPath);
+			});
 		}
 
 		/**
@@ -108,10 +161,16 @@ module.exports = {
 			}
 
 			const currentModuleDir = findModuleDir(absoluteCurrentFile);
+			const currentModuleConfig = findModuleDirConfig(absoluteCurrentFile);
 			const importModuleDir = findModuleDir(resolvedPath);
 
 			// If the current file is in a module
 			if (currentModuleDir) {
+				// Check if this import should be ignored
+				if (shouldIgnoreImport(resolvedPath, currentModuleConfig)) {
+					return;
+				}
+
 				// If the imported file is not in any module
 				if (!importModuleDir) {
 					context.report({
@@ -119,7 +178,7 @@ module.exports = {
 						messageId: 'outsideModuleImport',
 						data: {
 							importPath,
-							moduleDirs: moduleDirectories.join(', ')
+							moduleDirs: moduleDirectories.map(dir => typeof dir === 'string' ? dir : dir.path).join(', ')
 						}
 					});
 					return;
@@ -132,7 +191,7 @@ module.exports = {
 						messageId: 'crossModuleImport',
 						data: {
 							importPath,
-							moduleDirs: moduleDirectories.join(', ')
+							moduleDirs: moduleDirectories.map(dir => typeof dir === 'string' ? dir : dir.path).join(', ')
 						}
 					});
 				}
